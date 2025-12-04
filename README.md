@@ -1,56 +1,79 @@
-# Robotic Arm Servo Motor Controlling
+# STM32 4-DOF Robotic Arm Control
 
-This project implements a **three-servo robotic arm** controlled by an **STM32 microcontroller**.  
-Each joint of the arm is driven by a 9g servo motor, and its position is adjusted using a dedicated potentiometer.  
-The microcontroller reads the potentiometers through ADC channels and generates PWM signals for the servos.
+This project implements a **4‑degree‑of‑freedom robotic arm** controlled using an **STM32 microcontroller**.  
+Each joint of the arm is driven by a servo motor, and the position of every servo is controlled through corresponding analog inputs (potentiometers) read via ADC channels.  
+The STM32 processes these inputs and generates PWM signals that precisely position the arm.
 
-The design and configuration follow the specifications in *Robotic arm.pdf*.
-
----
-
-## Project Overview
-
-The system controls three servo motors corresponding to three joints of a robotic arm.  
-For each joint:
-
-1. A potentiometer provides an analog voltage proportional to the desired angle.
-2. The STM32 reads this value via an ADC channel (0–4096).
-3. The value is mapped linearly to an angle in the range 0–180°.
-4. The angle is converted into a PWM duty cycle for driving the servo.
-
-The PWM is generated at **50 Hz** with a **20 ms period**, suitable for standard RC servos.
+This repository contains the firmware and structure for a clean, reproducible implementation based on standard STM32Cube HAL configuration.
 
 ---
 
-## Hardware
+## 🚀 Project Overview
 
-- STM32 Nucleo-G474RE (or similar STM32 microcontroller board)
-- Three 9g servo motors
-- Three 5 kΩ potentiometers
-- Power supply suitable for servos and MCU
-- Breadboard or PCB wiring
+The robotic arm has four controllable axes, each actuated by a servo motor.  
+The controller:
 
-### Pin and Peripheral Mapping
+1. Continuously reads analog inputs from potentiometers.  
+2. Maps each value (0–4095) to servo angles (0°–180°).  
+3. Converts the angle into a PWM compare value (CCR) that drives each servo.  
+4. Updates servo positions in real time.
 
-- Potentiometer 1 → **PA0** → `ADC1_IN1` → controls Servo 1 via `TIM2_CH2` (PA1)  
-- Potentiometer 2 → **PA4** → `ADC2_IN1` → controls Servo 2 via `TIM3_CH3` (PB0)  
-- Potentiometer 3 → **PA9** → `ADC5_IN1` → controls Servo 3 via `TIM1_CH1` (PC0)  
+This setup demonstrates a full signal chain:
 
-Clock configuration: **HCLK = 45 MHz**  
-
-All timers use:
-
-- Prescaler `PSC = 900 - 1`
-- Auto-reload `ARR = 1000 - 1`
-
-Resulting in a **50 Hz PWM** frequency.
+```
+Potentiometer → STM32 ADC → Angle Mapping → PWM Output → Servo → Arm Motion
+```
 
 ---
 
-## Repository Structure
+## 🔧 Hardware
 
-```text
-stm32-robotic-arm-servo/
+- STM32 Nucleo or similar STM32 microcontroller board  
+- Four standard RC servo motors  
+- Four potentiometers (for manual joint control)  
+- External power supply capable of powering all servos  
+- Breadboard or PCB for wiring  
+
+### Microcontroller Peripheral Mapping
+
+- **Joint 1**  
+  - ADC input: e.g., PA0  
+  - PWM output: TIM channel for servo 1  
+
+- **Joint 2**  
+  - ADC input: e.g., PA4  
+  - PWM output: TIM channel for servo 2  
+
+- **Joint 3**  
+  - ADC input: e.g., PA9  
+  - PWM output: TIM channel for servo 3  
+
+- **Joint 4**  
+  - ADC input: board‑dependent  
+  - PWM output: TIM channel for servo 4  
+
+### PWM Parameters
+
+All four servos use:
+
+- **PWM frequency:** 50 Hz  
+- **Prescaler:** chosen so that timer ticks match required resolution  
+- **ARR:** configured for a 20 ms PWM period  
+
+Pulse‑width mapping:
+
+| Servo angle | Pulse width | CCR value |
+|-------------|-------------|-----------|
+| 0°          | 0.5 ms      | ≈ 2.5%    |
+| 90°         | 1.5 ms      | ≈ 7.5%    |
+| 180°        | 2.5 ms      | ≈ 12.5%   |
+
+---
+
+## 📁 Repository Structure
+
+```
+stm32-robotic-arm-4dof/
 ├── README.md
 ├── docs/
 │   └── Robotic arm.pdf
@@ -60,49 +83,50 @@ stm32-robotic-arm-servo/
 
 ---
 
-## Firmware Logic
+## 🧠 Firmware Logic
 
-The main control loop:
+For each of the four joints:
 
-1. Starts ADC conversion for each potentiometer.  
-2. Polls until the value is ready.  
-3. Maps ADC 0–4096 → 0–180°.  
-4. Converts angle → PWM compare value (CCR):  
+1. Read ADC input:  
    ```c
-   Angle = 25 + (100 * Degree) / 180;
+   uint16_t adcValue = HAL_ADC_GetValue(&hadcX);    // 0–4095
    ```
-5. Writes CCR value to each servo timer channel.
+2. Convert to angle:  
+   ```c
+   uint16_t angle = adcValue * 180 / 4096;
+   ```
+3. Convert angle to PWM compare value:  
+   ```c
+   uint16_t ccr = MIN_CCR + (MAX_CCR - MIN_CCR) * angle / 180;
+   ```
+4. Update PWM channel:  
+   ```c
+   __HAL_TIM_SET_COMPARE(&htimX, TIM_CHANNEL_Y, ccr);
+   ```
 
-Pulse-width interpretation:
-
-- `CCR = 25` → 0.5 ms → 0°  
-- `CCR = 75` → 1.5 ms → 90°  
-- `CCR = 125` → 2.5 ms → 180°  
-
-for a 20 ms PWM period.
-
----
-
-## Usage
-
-1. Create a new STM32 project in STM32CubeMX / STM32CubeIDE.  
-2. Configure:
-   - ADC1 on PA0  
-   - ADC2 on PA4  
-   - ADC5 on PA9  
-   - TIM2_CH2 on PA1  
-   - TIM3_CH3 on PB0  
-   - TIM1_CH1 on PC0  
-   - System clock at HCLK = 45 MHz  
-3. Let CubeMX generate initialization code.  
-4. Replace the generated `main.c` with `src/main.c`.  
-5. Build and flash to the MCU.  
-6. Adjust potentiometers to move each joint of the arm.
+This loop updates all servos continuously for real‑time movement.
 
 ---
 
-## Authors
+## ▶️ How to Build & Run
+
+1. Create a project in **STM32CubeIDE**.  
+2. Configure four ADC inputs and four TIM PWM channels.  
+3. Generate initialization code from CubeMX.  
+4. Copy the provided `main.c` into `Core/Src/`.  
+5. Compile and flash the firmware.  
+6. Power the servos from a stable 5‑6V supply.  
+7. Adjust potentiometers to move the robotic arm joints.
+
+---
+
+## 📄 Documentation
+
+The report included in the `docs/` folder contains diagrams, wiring references, and project details.
+
+---
+
+## ✍️ Authors
 
 - **Hamed Nahvi**  
 - **Yasin Shadrouh**
-
