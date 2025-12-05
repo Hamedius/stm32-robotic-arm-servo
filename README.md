@@ -8,7 +8,7 @@ This repository contains the firmware and structure for a clean, reproducible im
 
 ---
 
-## 🚀 Project Overview
+##  Project Overview
 
 The robotic arm has four controllable axes, each actuated by a servo motor.  
 The controller:
@@ -26,7 +26,7 @@ Potentiometer → STM32 ADC → Angle Mapping → PWM Output → Servo → Arm M
 
 ---
 
-## 🔧 Hardware
+##  Hardware
 
 - STM32 Nucleo or similar STM32 microcontroller board  
 - Four standard RC servo motors  
@@ -70,7 +70,7 @@ Pulse‑width mapping:
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```
 stm32-robotic-arm-4dof/
@@ -83,7 +83,7 @@ stm32-robotic-arm-4dof/
 
 ---
 
-## 🧠 Firmware Logic
+##  Firmware Logic
 
 For each of the four joints:
 
@@ -108,7 +108,7 @@ This loop updates all servos continuously for real‑time movement.
 
 ---
 
-## ▶️ How to Build & Run
+##  How to Build & Run
 
 1. Create a project in **STM32CubeIDE**.  
 2. Configure four ADC inputs and four TIM PWM channels.  
@@ -120,13 +120,13 @@ This loop updates all servos continuously for real‑time movement.
 
 ---
 
-## 📄 Documentation
+##  Documentation
 
 The report included in the `docs/` folder contains diagrams, wiring references, and project details.
 
 ---
 
-## ✍️ Authors
+##  Authors
 
 - **Hamed Nahvi**  
 - **Yasin Shadrouh**
